@@ -86,15 +86,68 @@
 #' fullPath <- file.path(filePath, fileName)
 #' imporFile <- importWaterML1(fullPath,TRUE)
 #'
+#'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#' # jlm test case
+#' thenGlobal <- thenFirstGlobal<-lubridate::now()
+#' timeTrack <- function(stamp) {
+#'   nowNow <- lubridate::now()
+#'   cat(paste0('\n', stamp,': ', 
+#'              '\n cumulative: ', format(nowNow-thenFirstGlobal, unit='seconds'), 
+#'              '\n section:    ', format(nowNow-thenGlobal,      unit='seconds')  ))
+#'   thenGlobal <<- lubridate::now()
+#' }
+#'system.time(dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active', 
+#'                            parameterCd=c("00060","00065")))
+#'                            
+#'No modifications                          
+#' Start of importWaterML1: 
+#' cumulative: 0.944746 secs
+#' section:    0.944746 secs
+#' got rawData importWaterML1: 
+#' cumulative: 6.835334 secs
+#' section:    5.890093 secs
+#' returnedDoc importWaterML1: 
+#' cumulative: 6.922531 secs
+#' section:    0.08674502 secs
+#' before mega loop importWaterML1: 
+#' cumulative: 6.93187 secs
+#' section:    0.008822918 secs
+#' after mega loop importWaterML1: ***
+#' cumulative: 1.228706 mins
+#' section:    1.113166 mins
+#' before dcast importWaterML1: 
+#' cumulative: 1.229821 mins
+#' section:    0.06639314 secs
+#' Aggregation function missing: defaulting to length
+#' 
+#' after dcast importWaterML1: **
+#' cumulative: 1.988311 mins
+#' section:    45.50783 secs
+#' before subsetting NA importWaterML1: 
+#' cumulative: 1.98832 mins
+#' section:    0.0001008511 secs
+#' after subsetting NA importWaterML1: 
+#' cumulative: 2.012457 mins
+#' section:    1.447874 secs
+#' end importWaterML1: 
+#' cumulative: 2.016126 mins
+#' section:    0.2195818 secs   user  system elapsed 
+#' 112.168   2.025 120.023                             
+#' 
 importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
   
+  timeTrack('Start of importWaterML1')
+    
   if(file.exists(obs_url)){
     rawData <- obs_url
   } else {
     rawData <- getWebServiceData(obs_url)
   }
-  
+  timeTrack('got rawData importWaterML1')
+    
   returnedDoc <- xmlTreeParse(rawData, getDTD = FALSE, useInternalNodes = TRUE)
+  timeTrack('returnedDoc importWaterML1')
   
   if(tz != ""){
     tz <- match.arg(tz, c("America/New_York","America/Chicago",
@@ -130,6 +183,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
   qualColumns <- c()
   mergedDF <- NULL
   
+  timeTrack('before mega loop importWaterML1')
   for (i in 1:length(timeSeries)){
     
     chunk <- xmlDoc(timeSeries[[i]])
@@ -156,6 +210,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
                       as.character(xpathApply(chunk, "ns1:sourceInfo/ns1:timeZoneInfo/ns1:daylightSavingsTimeZone/@zoneOffset", namespaces = chunkNS)))
     
 
+    stop()
     for (j in valuesIndex){
       subChunk <- xmlRoot(xmlDoc(chunk[[j]]))
       
@@ -163,7 +218,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
       
       methodID <- zeroPad(methodID,2)
       
-      value <- as.numeric(xpathSApply(subChunk, "ns1:value",namespaces = chunkNS, xmlValue))  
+      value <- as.numeric(xpathSApply(subChunk, "ns1:value",namespaces = chunkNS, xmlValue))        
       
       if(length(value)!=0){
       
@@ -396,13 +451,12 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
 
     
   }
-
+  timeTrack('after mega loop importWaterML1')
+  
   if(!is.null(mergedDF)){
   
     dataColumns <- unique(dataColumns)
-    qualColumns <- unique(qualColumns)
-    
-    
+    qualColumns <- unique(qualColumns) 
     
     sortingColumns <- names(mergedDF)[!(names(mergedDF) %in% c(dataColumns,qualColumns))]
   
@@ -410,13 +464,19 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
     meltedmergedDF  <- meltedmergedDF[!is.na(meltedmergedDF$value),] 
   
     castFormula <- as.formula(paste(paste(sortingColumns, collapse="+"),"variable",sep="~"))
+    ## dcast is what causes the aggregation message 
+    timeTrack('before dcast importWaterML1')
     mergedDF2 <- dcast(meltedmergedDF, castFormula, drop=FALSE)
+    timeTrack('after dcast importWaterML1')
     dataColumns2 <- !(names(mergedDF2) %in% sortingColumns)
+    
+    timeTrack('before subsetting NA importWaterML1')
     if(sum(dataColumns2) == 1){
       mergedDF <- mergedDF2[!is.na(mergedDF2[,dataColumns2]),]
     } else {
       mergedDF <- mergedDF2[rowSums(is.na(mergedDF2[,dataColumns2])) != sum(dataColumns2),]
     }
+    timeTrack('after subsetting NA importWaterML1')
     
     if(length(dataColumns) > 1){
       mergedDF[,dataColumns] <- lapply(mergedDF[,dataColumns], function(x) as.numeric(x))
@@ -441,5 +501,6 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
   #   attr(mergedDF, "attributeList") <- attList
   #   attr(mergedDF, "queryInfo") <- queryInfo
   attr(mergedDF, "queryTime") <- Sys.time()
+  timeTrack('end importWaterML1')
   return (mergedDF)
 }
