@@ -49,7 +49,7 @@
 #' property <- '00060'
 #' obs_url <- constructNWISURL(siteNumber,property,startDate,endDate,'dv')
 #' \dontrun{
-#' data <- importWaterML1(obs_url)
+#' data <- importWaterML1(obs_url,TRUE)
 #' 
 #' groundWaterSite <- "431049071324301"
 #' startGW <- "2013-10-01"
@@ -57,7 +57,6 @@
 #' groundwaterExampleURL <- constructNWISURL(groundWaterSite, NA,
 #'           startGW,endGW, service="gwlevels")
 #' groundWater <- importWaterML1(groundwaterExampleURL)
-#' groundWater2 <- importWaterML1(groundwaterExampleURL, asDateTime=TRUE)
 #' 
 #' unitDataURL <- constructNWISURL(siteNumber,property,
 #'          "2013-11-03","2013-11-03",'uv')
@@ -87,18 +86,104 @@
 #' fullPath <- file.path(filePath, fileName)
 #' imporFile <- importWaterML1(fullPath,TRUE)
 #'
-importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
-  
+zz<-NULL
+
+#' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#' XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+#' @examples
+#' # jlm test case
+#' thenGlobal <- thenFirstGlobal<-lubridate::now()
+#' #timeTrack <- function(stamp) {
+#'   nowNow <- lubridate::now()
+#'   cat(paste0('\n', stamp,': ', 
+#'              '\n cumulative: ', format(nowNow-thenFirstGlobal, unit='seconds'), 
+#'              '\n section:    ', format(nowNow-thenGlobal,      unit='seconds'),'\n'))
+#'   thenGlobal <<- lubridate::now()
+#' }
+#' # case with no aggregation by length
+#' system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='06', siteStatus='active', 
+#'                            parameterCd=c("00060","00065")))
+#'                            
+#' # case with? agg by length                            
+#' system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active', 
+#'                            parameterCd=c("00060","00065")))                            
+#'                            
+#' # case with? agg by length                            
+#' system.time(dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active', 
+#'                            parameterCd=c("00060","00065")))                            
+#'                            
+#' No modifications                          
+#' Start of importWaterML1: 
+#' cumulative: 0.944746 secs
+#' section:    0.944746 secs
+#' got rawData importWaterML1: 
+#' cumulative: 6.835334 secs
+#' section:    5.890093 secs
+#' returnedDoc importWaterML1: 
+#' cumulative: 6.922531 secs
+#' section:    0.08674502 secs
+#' before mega loop importWaterML1: 
+#' cumulative: 6.93187 secs
+#' section:    0.008822918 secs
+#' after mega loop importWaterML1: ***
+#' cumulative: 1.228706 mins
+#' section:    1.113166 mins
+#' before dcast importWaterML1: 
+#' cumulative: 1.229821 mins
+#' section:    0.06639314 secs
+#' Aggregation function missing: defaulting to length
+#' 
+#' after dcast importWaterML1: **
+#' cumulative: 1.988311 mins
+#' section:    45.50783 secs
+#' before subsetting NA importWaterML1: 
+#' cumulative: 1.98832 mins
+#' section:    0.0001008511 secs
+#' after subsetting NA importWaterML1: 
+#' cumulative: 2.012457 mins
+#' section:    1.447874 secs
+#' end importWaterML1: 
+#' cumulative: 2.016126 mins
+#' section:    0.2195818 secs   user  system elapsed 
+#' 112.168   2.025 120.023                             
+#' 
+#' @export
+ImportWaterMlJlm <- function(obs_url) {
+ 
+  #timeTrack('Start of importWaterML1')
+    
   if(file.exists(obs_url)){
     rawData <- obs_url
   } else {
     rawData <- getWebServiceData(obs_url)
   }
+  #timeTrack('got rawData importWaterML1')
+    
+  list( rawData=rawData, obs_url=obs_url )
+}
+
+#' @export
+ParseWaterML <- function(import, asDateTime=FALSE, tz="", 
+                         filterVar=c("X_00065_00011", "X_00060_00011") ) {
   
-  importList <- list(rawData=rawData, obs_url=obs_url)
-  save(importList, file='origImportListHuc10.RData')
+  rawData <- import$rawData
+  obs_url <- import$obs_url
   
   returnedDoc <- xmlTreeParse(rawData, getDTD = FALSE, useInternalNodes = TRUE)
+  #timeTrack('returnedDoc importWaterML1')
+  
+  doc <- xmlRoot(returnedDoc)
+  
+  ns <- xmlNamespaceDefinitions(doc, simplify = TRUE)  
+  queryInfo <- xmlToList(xmlRoot(xmlDoc(doc[["queryInfo"]])))
+  names(queryInfo) <- make.unique(names(queryInfo))
+  
+  noteIndex <- grep("note",names(queryInfo))
+  noteTitles <- as.character(lapply(queryInfo[noteIndex], function(x) x$.attrs))
+  notes <- as.character(lapply(queryInfo[noteIndex], function(x) x$text))
+  names(notes) <- noteTitles
+  
+  timeSeries <- xpathApply(doc, "//ns1:timeSeries", namespaces = ns)
   
   if(tz != ""){
     tz <- match.arg(tz, c("America/New_York","America/Chicago",
@@ -107,21 +192,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
                           "America/Jamaica","America/Managua",
                           "America/Phoenix","America/Metlakatla"))
   }
-    
-  doc <- xmlRoot(returnedDoc)
-  ns <- xmlNamespaceDefinitions(doc, simplify = TRUE)  
-  queryInfo <- xmlToList(xmlRoot(xmlDoc(doc[["queryInfo"]])))
-  names(queryInfo) <- make.unique(names(queryInfo))
-  
-  noteIndex <- grep("note",names(queryInfo))
-  
-  noteTitles <- as.character(lapply(queryInfo[noteIndex], function(x) x$.attrs))
-  notes <- as.character(lapply(queryInfo[noteIndex], function(x) x$text))
-  names(notes) <- noteTitles
-  
-  timeSeries <- xpathApply(doc, "//ns1:timeSeries", namespaces = ns)
-  
-  
+
   if(0 == length(timeSeries)){
     df <- data.frame()
     attr(df, "queryInfo") <- queryInfo
@@ -134,8 +205,10 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
   qualColumns <- c()
   mergedDF <- NULL
   
+  #stop()
+  
+  #timeTrack('before mega loop importWaterML1')
   for (i in 1:length(timeSeries)){
-    
     chunk <- xmlDoc(timeSeries[[i]])
     chunk <- xmlRoot(chunk)
     chunkNS <- xmlNamespaceDefinitions(chunk, simplify = TRUE)  
@@ -160,6 +233,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
                       as.character(xpathApply(chunk, "ns1:sourceInfo/ns1:timeZoneInfo/ns1:daylightSavingsTimeZone/@zoneOffset", namespaces = chunkNS)))
     
 
+    #stop()
     for (j in valuesIndex){
       subChunk <- xmlRoot(xmlDoc(chunk[[j]]))
       
@@ -167,66 +241,72 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
       
       methodID <- zeroPad(methodID,2)
       
-      value <- as.numeric(xpathSApply(subChunk, "ns1:value",namespaces = chunkNS, xmlValue))  
+      value <- as.numeric(xpathSApply(subChunk, "ns1:value",namespaces = chunkNS, xmlValue))        
       
       if(length(value)!=0){
       
-#         value[value == noValue] <- NA
+        value[value == noValue] <- NA
             
         attNames <- xpathSApply(subChunk, "ns1:value/@*",namespaces = chunkNS)
         attributeNames <- unique(names(attNames))
   
+        ## really, x? how about attributeValues or attVals
         x <- lapply(attributeNames, function(x) xpathSApply(subChunk, paste0("ns1:value/@",x),namespaces = chunkNS))
         
         
         methodDescription <- as.character(xpathApply(subChunk, "ns1:method/ns1:methodDescription", namespaces = chunkNS, xmlValue))
         
-        valueName <- paste("X",pCode,statCd,sep="_")
-        
+        ### jlm can filter on this.
+        ### if value name is not in some predefined set, next
+        valueName <- paste("X",pCode,statCd,sep="_")        
         if(length(methodDescription) > 0 && methodDescription != ""){
           valueName <- paste("X",methodDescription,pCode,statCd,sep="_") 
         }
+        if(length(filterVar)) if(!(valueName %in% filterVar)) next
         
-         
         assign(valueName,value)
         
+        ## "atomic" df
         df <- data.frame(agency_cd = rep(agency,length(value)),
                          site_no = rep(site,length(value)),
                          stringsAsFactors=FALSE)
         
+        ## put attributes into the df
         if(length(attributeNames) > 0){
           for(k in 1:length(attributeNames)){
             attVal <- as.character(x[[k]])
             if(length(attVal) == nrow(df)){
-              df$temp <- as.character(x[[k]])
-              
+              df$temp <- as.character(x[[k]])              
             } else {
               attrList <- xpathApply(subChunk, "ns1:value", namespaces = chunkNS, xmlAttrs)
               df$temp <- sapply(1:nrow(df),function(x) as.character(attrList[[x]][attributeNames[k]]))
               df$temp[is.na(df$temp)] <- ""
             }
             names(df)[which(names(df) %in% "temp")] <- attributeNames[k]
-            
           }
         }
         
+        ## put the value into the df
         df <- cbind(df, get(valueName))
         names(df)[length(df)] <- valueName
         
+        ## qualifiers are what I think of as codes
+        ## note tracking these columns by name
         if("qualifiers" %in% names(df)){
           qualName <- paste(valueName,"cd",sep="_")
           names(df)[which(names(df) == "qualifiers")] <- qualName
           qualColumns <- c(qualColumns, qualName)
         }
         
+        ## track the columns with data by bame
         dataColumns <- c(dataColumns, valueName)
-        
+      
         if("dateTime" %in% attributeNames){
           
           datetime <- xpathSApply(subChunk, "ns1:value/@dateTime",namespaces = chunkNS)
           
           numChar <- nchar(datetime)
-          
+
           if(asDateTime){
             
             # Common options:
@@ -283,7 +363,7 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
               attr(datetime, "tzone") <- "UTC"
               df$tz_cd <- rep("UTC", nrow(df))
             }
-
+            
             
           } else {
             
@@ -395,62 +475,43 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
       statInformation <- merge(statInformation, statInfo, by=similarStats, all=TRUE)
     }
 
+    ######################
+    
     attList[[uniqueName]] <- list(extraSiteData, extraVariableData)
-  }
 
+    
+  }
+  #timeTrack('after mega loop importWaterML1')
+  
   if(!is.null(mergedDF)){
   
     dataColumns <- unique(dataColumns)
-    qualColumns <- unique(qualColumns)
+    qualColumns <- unique(qualColumns) 
     
     sortingColumns <- names(mergedDF)[!(names(mergedDF) %in% c(dataColumns,qualColumns))]
   
     meltedmergedDF  <- melt(mergedDF,id.vars=sortingColumns)
     meltedmergedDF  <- meltedmergedDF[!is.na(meltedmergedDF$value),] 
-    
-    meltedmergedDF <- meltedmergedDF[!duplicated(meltedmergedDF),]
-    castFormula <- as.formula(paste(paste(sortingColumns, collapse="+"),"variable",sep="~"))
-    
-    #Check for duplicated sorting columns (2 qualifier problem):
-    qualDups <- meltedmergedDF[duplicated(meltedmergedDF[,c(sortingColumns,"variable")]),]
-    qualDups <- qualDups[grep("cd",qualDups$variable),]
-    indexDups <- as.numeric(row.names(qualDups))
   
-    if(length(indexDups) > 0){
-      mergedDF2 <- dcast(meltedmergedDF[-indexDups,], castFormula, drop=FALSE, value.var = "value",)
-      
-      # Need to get value....
-      dupInfo <- meltedmergedDF[indexDups, sortingColumns]
-      valDF <- meltedmergedDF[meltedmergedDF$variable != meltedmergedDF[indexDups,"variable" ],]
-      dupVals <- valDF[,sortingColumns]
-      
-      matchIndexes <- merge(dupInfo, transform(dupVals, rownum=1:nrow(dupVals)))$rownum
-
-      newRows <- rbind(meltedmergedDF[indexDups, ], valDF[matchIndexes,])
-      
-      mergedDF3 <- dcast(newRows, castFormula, drop=FALSE, value.var = "value",)
-      mergedDF2 <- rbind(mergedDF2, mergedDF3)
-      mergedDF2 <- mergedDF2[order(mergedDF2$dateTime),]
-      
-      dataColumns2 <- !(names(mergedDF2) %in% sortingColumns)
-      
-    } else {
-      mergedDF2 <- dcast(meltedmergedDF, castFormula, drop=FALSE, value.var = "value")
-      dataColumns2 <- !(names(mergedDF2) %in% sortingColumns)
-    }
+    castFormula <- as.formula(paste(paste(sortingColumns, collapse="+"),"variable",sep="~"))
+    ## dcast is what causes the aggregation message 
+    #timeTrack('before dcast importWaterML1')
+    mergedDF2 <- dcast(meltedmergedDF, castFormula, drop=FALSE)
+    #timeTrack('after dcast importWaterML1')
+    dataColumns2 <- !(names(mergedDF2) %in% sortingColumns)
     
+    #timeTrack('before subsetting NA importWaterML1')
     if(sum(dataColumns2) == 1){
       mergedDF <- mergedDF2[!is.na(mergedDF2[,dataColumns2]),]
     } else {
       mergedDF <- mergedDF2[rowSums(is.na(mergedDF2[,dataColumns2])) != sum(dataColumns2),]
     }
+    #timeTrack('after subsetting NA importWaterML1')
     
     if(length(dataColumns) > 1){
       mergedDF[,dataColumns] <- lapply(mergedDF[,dataColumns], function(x) as.numeric(x))
-      mergedDF[dataColumns][!is.na(mergedDF[,dataColumns]) & mergedDF[,dataColumns] == noValue] <- NA
     } else {
       mergedDF[,dataColumns] <- as.numeric(mergedDF[,dataColumns])
-      mergedDF[!is.na(mergedDF[,dataColumns]) & mergedDF[,dataColumns] == noValue,dataColumns] <- NA
     }
     
     names(mergedDF) <- make.names(names(mergedDF))
@@ -466,6 +527,10 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
   attr(mergedDF, "variableInfo") <- variableInformation
   attr(mergedDF, "disclaimer") <- notes["disclaimer"]
   attr(mergedDF, "statisticInfo") <- statInformation
+  # Do we want this?
+  #   attr(mergedDF, "attributeList") <- attList
+  #   attr(mergedDF, "queryInfo") <- queryInfo
   attr(mergedDF, "queryTime") <- Sys.time()
+  #timeTrack('end importWaterML1')
   return (mergedDF)
 }

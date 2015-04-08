@@ -123,7 +123,29 @@ readNWISdata <- function(service="dv", ...){
   if(service == "site"){
     retval <- importRDB1(urlCall, asDateTime = FALSE, qw = FALSE)
   } else if(service != "qwdata") {
-    retval <- importWaterML1(urlCall, asDateTime = ("iv" == service))
+    ## original code
+    #retval <- importWaterML1(urlCall, asDateTime = ("iv" == service))
+    
+    ## jlm code start
+    ## save the above, original rawData for repeatable benchmarking.
+    #save(retval, file='originalRetvalReadNwisData.RData')
+    #importList <- ImportWaterMlJlm(urlCall)
+    #str(importList)
+    load("origImportListHuc10.RData") 
+    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service), filter=NULL)))
+    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
+    #save(retval, file='newRetvalReadNwisData.RData')
+    
+    ## check - it works!
+    #load('originalRetvalReadNwisData.RData')
+    #rv0<-subset(retval, site_no %in% retval$site_no)
+    #load('newRetvalReadNwisData.RData')  
+    #rv1<-subset(retval, site_no %in% retval$site_no)
+    #identical(rv0,rv1)
+    #for(cc in names(rv0)) print(all(rv0[cc]==rv1[cc], na.rm=TRUE))
+    
+    ## jlm code end
+        
     if("dv" == service){
       retval$dateTime <- as.POSIXct(retval$dateTime)
     }
