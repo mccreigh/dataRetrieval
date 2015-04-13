@@ -104,7 +104,7 @@ zz<-NULL
 #' system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='06', siteStatus='active', 
 #'                            parameterCd=c("00060","00065")))
 #'                            
-#' # case with? agg by length                            
+#' # case with? agg by length
 #' system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active', 
 #'                            parameterCd=c("00060","00065")))                            
 #'                            
@@ -151,7 +151,7 @@ zz<-NULL
 ImportWaterMlJlm <- function(obs_url) {
  
   #timeTrack('Start of importWaterML1')
-    
+  queryTime <- Sys.time()
   if(file.exists(obs_url)){
     rawData <- obs_url
   } else {
@@ -159,15 +159,17 @@ ImportWaterMlJlm <- function(obs_url) {
   }
   #timeTrack('got rawData importWaterML1')
     
-  list( rawData=rawData, obs_url=obs_url )
+  list( rawData=rawData, obs_url=obs_url, queryTime=queryTime )
 }
 
 #' @export
 ParseWaterML <- function(import, asDateTime=FALSE, tz="", 
-                         filterVar=c("X_00065_00011", "X_00060_00011") ) {
+                         filterVar  = c("X_00065_00011", "X_00060_00011"),
+                         filterTime = queryTime - lubridate::period(60, 'minutes') ) {
   
-  rawData <- import$rawData
-  obs_url <- import$obs_url
+  rawData   <- import$rawData
+  obs_url   <- import$obs_url
+  queryTime <- import$queryTime 
   
   returnedDoc <- xmlTreeParse(rawData, getDTD = FALSE, useInternalNodes = TRUE)
   #timeTrack('returnedDoc importWaterML1')
@@ -378,6 +380,7 @@ ParseWaterML <- function(import, asDateTime=FALSE, tz="",
             
           }
           
+          if(length(filterTime)) if(datetime < filterTime) next 
           df$dateTime <- datetime     
         }
         
@@ -483,6 +486,7 @@ ParseWaterML <- function(import, asDateTime=FALSE, tz="",
   }
   #timeTrack('after mega loop importWaterML1')
   
+  save(mergedDF, file='mergedDF.RData')
   if(!is.null(mergedDF)){
   
     dataColumns <- unique(dataColumns)
@@ -496,7 +500,7 @@ ParseWaterML <- function(import, asDateTime=FALSE, tz="",
     castFormula <- as.formula(paste(paste(sortingColumns, collapse="+"),"variable",sep="~"))
     ## dcast is what causes the aggregation message 
     #timeTrack('before dcast importWaterML1')
-    mergedDF2 <- dcast(meltedmergedDF, castFormula, drop=FALSE)
+    print(system.time(mergedDF2 <- dcast(meltedmergedDF, castFormula, drop=FALSE)))
     #timeTrack('after dcast importWaterML1')
     dataColumns2 <- !(names(mergedDF2) %in% sortingColumns)
     
@@ -530,7 +534,7 @@ ParseWaterML <- function(import, asDateTime=FALSE, tz="",
   # Do we want this?
   #   attr(mergedDF, "attributeList") <- attList
   #   attr(mergedDF, "queryInfo") <- queryInfo
-  attr(mergedDF, "queryTime") <- Sys.time()
+  attr(mergedDF, "queryTime") <- queryTime
   #timeTrack('end importWaterML1')
   return (mergedDF)
 }

@@ -130,9 +130,11 @@ readNWISdata <- function(service="dv", ...){
     ## save the above, original rawData for repeatable benchmarking.
     #save(retval, file='originalRetvalReadNwisData.RData')
     #importList <- ImportWaterMlJlm(urlCall)
+    #save(importList, file="importListHuc10.RData")
     #str(importList)
-    load("origImportListHuc10.RData") 
-    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service), filter=NULL)))
+    load("importListHuc10.RData") 
+    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
+                                             filterV=NULL, filterT=NULL)))
     print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
     #save(retval, file='newRetvalReadNwisData.RData')
     
