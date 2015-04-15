@@ -143,8 +143,10 @@ readNWISdata <- function(service="dv", ...){
     #load("importListHuc10.RData") 
     #load("importListHuc10WML2.RData") 
     ## compare without and with filters
-    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
-                                             filterV=NULL, filterT=NULL)))
+    ##print(system.time(
+      retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
+                                             filterV=NULL, filterT=NULL)
+    ##))
     #print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
     #save(retval, file='newRetvalReadNwisData.RData')
   
