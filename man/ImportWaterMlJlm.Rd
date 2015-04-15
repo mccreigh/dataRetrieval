@@ -32,40 +32,5 @@ system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='10', siteStatu
 # case with? agg by length
 system.time(dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active',
                            parameterCd=c("00060","00065")))
-
-No modifications
-Start of importWaterML1:
-cumulative: 0.944746 secs
-section:    0.944746 secs
-got rawData importWaterML1:
-cumulative: 6.835334 secs
-section:    5.890093 secs
-returnedDoc importWaterML1:
-cumulative: 6.922531 secs
-section:    0.08674502 secs
-before mega loop importWaterML1:
-cumulative: 6.93187 secs
-section:    0.008822918 secs
-after mega loop importWaterML1: ***
-cumulative: 1.228706 mins
-section:    1.113166 mins
-before dcast importWaterML1:
-cumulative: 1.229821 mins
-section:    0.06639314 secs
-Aggregation function missing: defaulting to length
-
-after dcast importWaterML1: **
-cumulative: 1.988311 mins
-section:    45.50783 secs
-before subsetting NA importWaterML1:
-cumulative: 1.98832 mins
-section:    0.0001008511 secs
-after subsetting NA importWaterML1:
-cumulative: 2.012457 mins
-section:    1.447874 secs
-end importWaterML1:
-cumulative: 2.016126 mins
-section:    0.2195818 secs   user  system elapsed
-112.168   2.025 120.023
 }
 

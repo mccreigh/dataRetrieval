@@ -126,7 +126,8 @@ ImportWaterMlJlm <- function(obs_url) {
   list( rawData=rawData, obs_url=obs_url, queryTime=queryTime )
 }
 
-
+#' Parse waterML1.1 previously imported by ImportWaterMlJlm
+#'
 #' @examples
 #' filterVar  = c("X_00065_00011", "X_00060_00011"),
 #' filterTime = queryTime - lubridate::period(60, 'minutes'), 
