@@ -95,8 +95,8 @@ importWaterML1 <- function(obs_url,asDateTime=FALSE, tz=""){
     rawData <- getWebServiceData(obs_url)
   }
   
-  importList <- list(rawData=rawData, obs_url=obs_url)
-  save(importList, file='origImportListHuc10.RData')
+  #importList <- list(rawData=rawData, obs_url=obs_url)
+  #save(importList, file='origImportListHuc10.RData')
   
   returnedDoc <- xmlTreeParse(rawData, getDTD = FALSE, useInternalNodes = TRUE)
   

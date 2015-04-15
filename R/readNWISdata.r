@@ -83,6 +83,7 @@ readNWISdata <- function(service="dv", ...){
   names(values)[names(values) == "siteNumbers"] <- "sites"
   
   format <- "waterml,1.1"
+  #format <- "waterml,2.0" ## jlm this should probably be a func arg.
   baseURL <- "http://waterservices.usgs.gov/nwis/"
   
   if(service == "iv"){
@@ -126,16 +127,30 @@ readNWISdata <- function(service="dv", ...){
     ## original code
     #retval <- importWaterML1(urlCall, asDateTime = ("iv" == service))
     
-    ## jlm code start
+    ## jlm code start - i did also chanage the format to wml2.0 above
+    ## alternatively, get the wml2
+    ##retval <- importWaterML2(urlCall, asDateTime = ("iv" == service))
+    
     ## save the above, original rawData for repeatable benchmarking.
     #save(retval, file='originalRetvalReadNwisData.RData')
-    #importList <- ImportWaterMlJlm(urlCall)
+    #save(retval, file='originalRetvalReadNwisDataWML2.RData')
+    
+    importList <- ImportWaterMlJlm(urlCall)
+    #importList <- importWaterML2Jlm(urlCall)
     #save(importList, file="importListHuc10.RData")
+    #save(importList, file="importListHuc10WML2.RData")
     #str(importList)
-    load("importListHuc10.RData") 
+    #load("importListHuc10.RData") 
+    #load("importListHuc10WML2.RData") 
+    ## compare without and with filters
     print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
                                              filterV=NULL, filterT=NULL)))
-    print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
+    #print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
+    #save(retval, file='newRetvalReadNwisData.RData')
+  
+    #print(system.time(retval <- ParseWaterML2(importList, asDateTime = ("iv" == service), 
+    #                                         filterV=NULL, filterT=NULL)))
+    #print(system.time(retval <- ParseWaterML2(importList, asDateTime = ("iv" == service))))
     #save(retval, file='newRetvalReadNwisData.RData')
     
     ## check - it works!

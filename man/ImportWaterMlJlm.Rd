@@ -3,22 +3,36 @@
 \name{ImportWaterMlJlm}
 \alias{ImportWaterMlJlm}
 \title{XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-# jlm test case
-thenGlobal <- thenFirstGlobal<-lubridate::now()
-timeTrack <- function(stamp) {
-  nowNow <- lubridate::now()
-  cat(paste0('\n', stamp,': ',
-             '\n cumulative: ', format(nowNow-thenFirstGlobal, unit='seconds'),
-             '\n section:    ', format(nowNow-thenGlobal,      unit='seconds')  ))
-  thenGlobal <<- lubridate::now()
-}
-system.time(dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active',
-                           parameterCd=c("00060","00065")))}
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX}
 \usage{
-ImportWaterMlJlm(obs_url, asDateTime = FALSE, tz = "")
+ImportWaterMlJlm(obs_url)
 }
 \description{
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+}
+\examples{
+# jlm test case
+thenGlobal <- thenFirstGlobal<-lubridate::now()
+#timeTrack <- function(stamp) {
+  nowNow <- lubridate::now()
+  cat(paste0('\\n', stamp,': ',
+             '\\n cumulative: ', format(nowNow-thenFirstGlobal, unit='seconds'),
+             '\\n section:    ', format(nowNow-thenGlobal,      unit='seconds'),'\\n'))
+  thenGlobal <<- lubridate::now()
+}
+# case with no aggregation by length
+system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='06', siteStatus='active',
+                           parameterCd=c("00060","00065")))
+
+# case with? agg by length
+system.time(ret <- dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active',
+                           parameterCd=c("00060","00065")))
+
+# case with? agg by length
+system.time(dataRetrieval::readNWISdata(service='iv', huc='10', siteStatus='active',
+                           parameterCd=c("00060","00065")))
+
 No modifications
 Start of importWaterML1:
 cumulative: 0.944746 secs
@@ -39,8 +53,7 @@ before dcast importWaterML1:
 cumulative: 1.229821 mins
 section:    0.06639314 secs
 Aggregation function missing: defaulting to length
-}
-\details{
+
 after dcast importWaterML1: **
 cumulative: 1.988311 mins
 section:    45.50783 secs
