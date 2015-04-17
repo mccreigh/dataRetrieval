@@ -60,8 +60,9 @@ readNWISuv <- function (siteNumbers,parameterCd,startDate="",endDate="", tz=""){
   
   url <- constructNWISURL(siteNumbers,parameterCd,startDate,endDate,"uv",format="xml")
 
-  data <- importWaterML1(url,asDateTime=TRUE,tz=tz)
-
+  #data <- importWaterML1(url,asDateTime=TRUE,tz=tz)
+  importList <- ImportWaterMlJlm(url)
+  data <- ParseWaterML(importList, asDateTime = TRUE, filterV=NULL, filterT=NULL)
   return (data)
 }
 
