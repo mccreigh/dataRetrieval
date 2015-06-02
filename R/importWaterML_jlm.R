@@ -115,14 +115,13 @@ zz<-NULL
 #'                                                    
 #' @export
 ImportWaterMlJlm <- function(obs_url) {
-  
   queryTime <- Sys.time()
   if(file.exists(obs_url)){
     rawData <- obs_url
   } else {
     rawData <- getWebServiceData(obs_url)
   }
-    
+  
   list( rawData=rawData, obs_url=obs_url, queryTime=queryTime )
 }
 

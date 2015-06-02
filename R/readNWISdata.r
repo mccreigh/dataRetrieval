@@ -60,7 +60,13 @@
 #'                   "drain_area_va","obs_count_nu"),service="qw")
 #' }
 readNWISdata <- function(service="dv", ...){
-  
+  urlCall    <- readNWISdataUrlCall(service=service, ...)
+  importList <- readNWISdataImport(urlCall, service=service)
+  readNWISdataRetval(importList, service)
+}
+ 
+#' @export
+readNWISdataUrlCall <- function(service, ...) {
   matchReturn <- list(...)
   
   match.arg(service, c("dv","iv","gwlevels","site", "uv","qw","qwdata"))
@@ -120,61 +126,39 @@ readNWISdata <- function(service="dv", ...){
   
   baseURL <- paste0(baseURL,service,"/?format=",format,"&")
   urlCall <- paste0(baseURL,urlCall)
+  urlCall
+}
   
+  
+#' @export
+readNWISdataImport <- function(urlCall, service) {
   if(service == "site"){
-    retval <- importRDB1(urlCall, asDateTime = FALSE, qw = FALSE)
-  } else if(service != "qwdata") {
-    ## original code
-    #retval <- importWaterML1(urlCall, asDateTime = ("iv" == service))
-    
-    ## jlm code start - i did also chanage the format to wml2.0 above
-    ## alternatively, get the wml2
-    ##retval <- importWaterML2(urlCall, asDateTime = ("iv" == service))
-    
-    ## save the above, original rawData for repeatable benchmarking.
-    #save(retval, file='originalRetvalReadNwisData.RData')
-    #save(retval, file='originalRetvalReadNwisDataWML2.RData')
-    
+    importList <- importRDB1(urlCall)
+  } else if(service != "qwdata") {    
     importList <- ImportWaterMlJlm(urlCall)
-    #importList <- importWaterML2Jlm(urlCall)
-    #save(importList, file="importListHuc10.RData")
-    #save(importList, file="importListHuc10WML2.RData")
-    #str(importList)
-    #load("importListHuc10.RData") 
-    #load("importListHuc10WML2.RData") 
-    ## compare without and with filters
-    ##print(system.time(
-      retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
-                                             filterV=NULL, filterT=NULL)
-    ##))
-    #print(system.time(retval <- ParseWaterML(importList, asDateTime = ("iv" == service))))
-    #save(retval, file='newRetvalReadNwisData.RData')
-  
-    #print(system.time(retval <- ParseWaterML2(importList, asDateTime = ("iv" == service), 
-    #                                         filterV=NULL, filterT=NULL)))
-    #print(system.time(retval <- ParseWaterML2(importList, asDateTime = ("iv" == service))))
-    #save(retval, file='newRetvalReadNwisData.RData')
-    
-    ## check - it works!
-    #load('originalRetvalReadNwisData.RData')
-    #rv0<-subset(retval, site_no %in% retval$site_no)
-    #load('newRetvalReadNwisData.RData')  
-    #rv1<-subset(retval, site_no %in% retval$site_no)
-    #identical(rv0,rv1)
-    #for(cc in names(rv0)) print(all(rv0[cc]==rv1[cc], na.rm=TRUE))
-    
-    ## jlm code end
-        
     if("dv" == service){
       retval$dateTime <- as.POSIXct(retval$dateTime)
     }
   } else {
-    possibleError <- tryCatch({
-      retval <- importRDB1(urlCall, asDateTime = TRUE, qw = TRUE)
-    }, error = function(e) {
-      stop(e, "with url:", urlCall)
-    })
+    importList <- importRDB1(urlCall)    
   }
-  
-  return(retval)
+  importList
 }
+
+#' @export
+readNWISdataRetval <- function(importList, service) {
+  ##should the following be de-couple from the above?
+  if(service == "site"){
+    retval <- ParseRDB1Jlm(importList, asDateTime = FALSE, qw = FALSE)
+  } else if(service != "qwdata") {
+    retval <- ParseWaterML(importList, asDateTime = ("iv" == service), 
+                           filterV=NULL, filterT=NULL)
+  } else {
+    possibleError <- tryCatch(
+      {retval <- ParseRDB1Jlm(importList, asDateTime = TRUE, qw = TRUE)},
+      error = function(e) {stop(e, "with url:", importList$obs_url)} )
+  }
+  retval
+}
+
+    
